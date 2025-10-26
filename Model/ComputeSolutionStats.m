@@ -1,6 +1,8 @@
 % Assuming LoadSolution.m has already been run.
 clc;
 
+warning("Not updated for sysvar");
+
 theta_1_min   = min(theta_1_z);
 theta_1_max   = max(theta_1_z);
 theta_1_range = range(theta_1_z);
