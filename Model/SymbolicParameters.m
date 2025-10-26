@@ -23,27 +23,6 @@ sysvar = struct();
 syms g % Gravity
 syms t % The passage of time
 
-%% Time-Invariant System Parameters
-% Arm
-syms l_1 % Length. Distance between pivot point and rope attachment point. 
-syms l_1cg % Center of mass distance from pivot point. 
-syms m_1 % Mass.
-syms I_1 % Moment of inertia about the pivot point (z axis).
-
-% Rope
-syms l_2 % Length. Specifically, distance between rope attachment point and
-
-% Projectile 
-syms m_2 % Mass
-
-% Power Plant
-syms l_pp1 % Crank length
-syms l_pp2 % Mounting distance
-syms theta_pp0 % Initial crank angle relative to +x direction
-syms x_pp0 % Initial spring extension  
-syms k % Spring Constant
-
-
 %% Generalized Coordinates.
 % The minimum variables needed to uniquely describe the state of the
 % system.
@@ -91,6 +70,10 @@ syms theta_1_initial
 
 %% Derived System Variables
 %% Arm
+syms l_1 % Length. Distance between pivot point and rope attachment point. 
+syms l_1cg % Center of mass distance from pivot point. 
+syms m_1 % Mass.
+syms I_1 % Moment of inertia about the pivot point (z axis).
 syms x_1 y_1;           % Position
 syms x_dot_1 y_dot_1;   % Velocity
 syms x_ddot_1 y_ddot_1; % Accel
@@ -106,6 +89,8 @@ sysvar.V_1     = struct('sym', V_1,     'expr', m_1*g*y_1                   );
 sysvar.T_1     = struct('sym', T_1,     'expr', (1/2)*m_1*(x_dot_1^2+y_dot_1^2)  );
 
 %% Projectile Parameters
+syms l_2 % Rope Length. Specifically, distance between rope attachment point and
+syms m_2 % Projectile Mass
 syms x_2 y_2            % Position
 syms x_dot_2 y_dot_2;   % Velocity
 syms x_ddot_2 y_ddot_2; % Accel
@@ -123,32 +108,15 @@ sysvar.T_2     = struct('sym', T_2,     'expr', (1/2)*m_2*(x_dot_2^2+y_dot_2^2) 
 
 %% Power Plant Parameters
 
+syms k % Spring Constant
+syms V_3 % Potential Energy
 
-%syms theta_pp(t) % Crank angle
-%syms l_pp(t) % Hypoteneus Length
-%syms x_pp(t) % Spring Extension
-
-
-% Crank angle as function of arm angle
-theta_pp = (theta_1-theta_1_initial) + theta_pp0; 
-r_pp = [l_pp1*cos(theta_pp); l_pp1*sin(theta_pp)];
-r_ppxy = formula(r_pp);
-% Power Plant length as function of crank angle
-%PowerPlant_Length = l_pp == sqrt((l_pp1*sin(theta_pp))^2 + (l_pp1*cos(theta_pp)+l_pp2)^2);
-l_pp = sqrt((l_pp1*sin(theta_pp))^2 + (l_pp1*cos(theta_pp)+l_pp2)^2);
-% Spring extension
-%PowerPlant_SpringExtension = x_pp == x_pp0 - (l_pp(theta_pp0) - l_pp);
-%x_pp = x_pp0 - (l_pp(theta_pp0) - l_pp); % l_pp is a function of time, so
-%you can't pass theta_pp0 like this.
-x_pp = x_pp0 - (subs(l_pp,theta_pp,theta_pp0) - l_pp);
-
-% Potential Energy
-V_3 = (1/2)*k*x_pp^2;
+sysvar.V_3 = struct('sym', V_3, 'expr', (1/2)*k*(theta_1)^2);
 
 %% Construct the Lagrangian
 syms V T L
 
-sysvar.V = struct('sym', V, 'expr',  V_1 + V_2); % + V_3
+sysvar.V = struct('sym', V, 'expr',  V_1 + V_2 + V_3);
 sysvar.T = struct('sym', T, 'expr',  T_1 + T_2);
 sysvar.L = struct('sym', L, 'expr',  T - V);
 

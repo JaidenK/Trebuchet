@@ -14,11 +14,28 @@ end
 % Load the model
 SymbolicParameters
 
+% Clear values we expect to load so that we don't accidentally get stuck 
+% with old data if the load fails.
+clear sol sysparam;
 % Load the solution
 load(filename);
 
-%%
+%% Convert old sysparam_symbols and sysparam_values to sysvar architecture
+% We should just update the portion where it's saved in the first place
+% clear sysparam;
+% sysparam = struct(); 
+% 
+% sysparam.I_1   = struct('sym', sysparam_symbols(1), 'expr', sysparam_values(1));
+% sysparam.g     = struct('sym', sysparam_symbols(2), 'expr', sysparam_values(2));
+% sysparam.l_1   = struct('sym', sysparam_symbols(3), 'expr', sysparam_values(3));
+% sysparam.l_1cg = struct('sym', sysparam_symbols(4), 'expr', sysparam_values(4));
+% sysparam.l_2   = struct('sym', sysparam_symbols(5), 'expr', sysparam_values(5));
+% sysparam.m_1   = struct('sym', sysparam_symbols(6), 'expr', sysparam_values(6));
+% sysparam.m_2   = struct('sym', sysparam_symbols(7), 'expr', sysparam_values(7));
+% sysparam.theta_1_initial   = struct('sym', sysparam_symbols(8), 'expr', sysparam_values(8));
+% sysparam.k     = struct('sym', sysparam_symbols(9), 'expr', sysparam_values(9));
 
+%%
 % Time samples for evaluating the solution
 t_z = linspace(min(sol.x),max(sol.x),200);
 [Y,Yp] = deval(sol,t_z);
@@ -46,6 +63,11 @@ disp("Lagrangian f_of_t Symvars:")
 disp(symvar(sysvar.L.f_of_t));
 
 %% Compute discrete events
+clear sysparam.discrete;
+sysparam.discrete = struct;
+
+% Discrete time step
+dt_z = t_z(2)-t_z(1);
 
 % Time of Release
 r_dot_2_theta_z = atan2(sysvar.y_dot_2.z,sysvar.x_dot_2.z); % Projectile polar coordinate argument
@@ -59,3 +81,21 @@ end
 t_z_release = t_z(i_release);
 % Use t_z_release instead of t_release to indicate that this value came
 % from discrete samples with no interpolation.
+syms phi_rel t_rel
+sysparam.discrete.phi_release = struct('sym', phi_rel, 'expr', deg2rad(135), 'subsexpr', deg2rad(135));
+sysparam.discrete.t_release   = struct('sym', t_rel, 'expr', atan2(y_dot_2,x_dot_2)-phi_rel, 'subsexpr', t_z_release);
+
+% We will ultimately be using this in a cost function somehow
+%T_2_release = sysvar.T_2.z(i_release);
+syms T_2_rel
+sysparam.discrete.T_2_release   = struct('sym', T_2_rel, 'expr', str2sym('T_2(t_rel)'), 'subsexpr', sysvar.T_2.z(i_release));
+
+
+fprintf("Quick Stats:\n");
+fprintf("  %.2f = t_release : time of release\n",sysparam.discrete.t_release.subsexpr);
+fprintf("  %.2f = T_2_release : Proj. Kinetic Energy at release\n",sysparam.discrete.T_2_release.subsexpr);
+
+
+
+
+
