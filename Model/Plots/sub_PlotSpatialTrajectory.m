@@ -22,14 +22,24 @@ linkage_points_x_z = @(z_i) [0, sysvar.x_1.z(z_i), sysvar.x_2.z(z_i)];
 linkage_points_y_z = @(z_i) [0, sysvar.y_1.z(z_i), sysvar.y_2.z(z_i)];
 ghost_time_step = 0.050; % 50 ms between ghosts
 ghostColor = .8*ones(1,3);
+quivScale = 1/50;
+quivColor = .5*ones(1,3);
 for i=1:(ghost_time_step/dt_z):i_release
     z_i = round(i);
     plot(linkage_points_x_z(z_i),linkage_points_y_z(z_i),'Color',ghostColor,'LineWidth',0.5);
+
+    % Forces
+    x = sysvar.x_2.z(z_i);
+    y = sysvar.y_2.z(z_i);
+    u = sysvar.F_x2_rope.z(z_i);
+    v = sysvar.F_y2_rope.z(z_i);
+    quiver(x,y,u,v,quivScale,'Color',quivColor);
 end
 % Starting Position
 plot(linkage_points_x_z(1),linkage_points_y_z(1),'k','LineWidth',1.5);
 % Release Position
 plot(linkage_points_x_z(i_release),linkage_points_y_z(i_release),'k','LineWidth',1.5);
+
 
 % Mark Points
 scatter([linkage_points_x_z(1) linkage_points_x_z(i_release)], ...

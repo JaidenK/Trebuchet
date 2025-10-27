@@ -20,82 +20,60 @@ clear sol sysparam;
 % Load the solution
 load(filename);
 
-%% Convert old sysparam_symbols and sysparam_values to sysvar architecture
-% We should just update the portion where it's saved in the first place
-% clear sysparam;
-% sysparam = struct(); 
-% 
-% sysparam.I_1   = struct('sym', sysparam_symbols(1), 'expr', sysparam_values(1));
-% sysparam.g     = struct('sym', sysparam_symbols(2), 'expr', sysparam_values(2));
-% sysparam.l_1   = struct('sym', sysparam_symbols(3), 'expr', sysparam_values(3));
-% sysparam.l_1cg = struct('sym', sysparam_symbols(4), 'expr', sysparam_values(4));
-% sysparam.l_2   = struct('sym', sysparam_symbols(5), 'expr', sysparam_values(5));
-% sysparam.m_1   = struct('sym', sysparam_symbols(6), 'expr', sysparam_values(6));
-% sysparam.m_2   = struct('sym', sysparam_symbols(7), 'expr', sysparam_values(7));
-% sysparam.theta_1_initial   = struct('sym', sysparam_symbols(8), 'expr', sysparam_values(8));
-% sysparam.k     = struct('sym', sysparam_symbols(9), 'expr', sysparam_values(9));
+SubsSystemParameters;
 
-%%
-% Time samples for evaluating the solution
-t_z = linspace(min(sol.x),max(sol.x),200);
-[Y,Yp] = deval(sol,t_z);
-theta_1_z       = Y(3,:);
-ddt_theta_1_z   = Y(4,:);
-d2dt2_theta_1_z = Yp(4,:);
-theta_2_z       = Y(1,:);
-ddt_theta_2_z   = Y(2,:);
-d2dt2_theta_2_z = Yp(2,:);
-
-Func_args_symbols = {[sym('t') cell2sym(DotNotation)]};
-%Func_args_symbols {[t     theta_ddot_1     theta_ddot_2     theta_dot_1    theta_dot_2    theta_1    theta_2]}
-Func_args_z =         [t_z; d2dt2_theta_1_z; d2dt2_theta_2_z;  ddt_theta_1_z; ddt_theta_2_z; theta_1_z; theta_2_z]';
-
-%% Substitute solution parameters into the model's time-depenent functions.
-% We want to remove dependence on all symbols except time and theta
-fieldNames = fieldnames(sysvar);
-for i=1:numel(fieldNames)
-    fieldName = fieldNames{i};
-    sysvar.(fieldName).f_of_t = subs(sysvar.(fieldName).f_of_t,sysparam_symbols,sysparam_values);
-    sysvar.(fieldName).func = matlabFunction(subs(sysvar.(fieldName).f_of_t,LeibnizNotation,DotNotation),'vars',Func_args_symbols);    
-    sysvar.(fieldName).z = sysvar.(fieldName).func(Func_args_z); % Evaluate discrete samples
-end
-disp("Lagrangian f_of_t Symvars:")
-disp(symvar(sysvar.L.f_of_t));
-
-%% Compute discrete events
+%% Compute exact discrete events
 clear sysparam.discrete;
 sysparam.discrete = struct;
+
+% Compute exact time of release
+%desired_release_angle = deg2rad(135);
+%vAngle = @(t) atan2(sysvar.y_dot_2.func(devalToArgs(sol,t)),sysvar.x_dot_2.func(devalToArgs(sol,t)));
+%tReleaseFunc = @(t) vAngle(t)-desired_release_angle;
+%if(tReleaseFunc(min(sol.x))*tReleaseFunc(max(sol.x)) > 0)
+    %warning("Projectile release does not occur!");
+    %t_release = max(sol.x);
+%else
+    %t_release = fzero(tReleaseFunc,.8);
+%end
+t_release = sol.x(end); % We are now using the event function to only solve up to release 
+
+syms t_rel T_2_rel;
+%syms phi_rel;
+% sysparam.discrete.phi_release = struct( ...
+%     'sym', phi_rel, ...
+%     'expr', desired_release_angle, ...
+%     'subsexpr', desired_release_angle);
+sysparam.discrete.t_release   = struct( ...
+    'sym', t_rel, ...
+    'expr', sym('phi_2')-sym('phi_rel')==0, ...
+    'subsexpr', t_release);
+sysparam.discrete.T_2_release = struct( ...
+    'sym', T_2_rel, ...
+    'expr', str2sym('T_2(t_rel)'), ...
+    'subsexpr', sysvar.T_2.func(devalToArgs(sol,t_release)));
+
+
+%% Evaluate discrete samples for plotting.
+% Time samples for evaluating the solution up to the point of release
+nSamples = 100;
+t_z = linspace(min(sol.x),t_release,nSamples); 
+Func_args_z = devalToArgs(sol,t_z);
+fieldNames = fieldnames(sysvar);
+for i=1:numel(fieldNames)
+    sysvar.(fieldNames{i}).z = sysvar.(fieldNames{i}).func(Func_args_z); % Evaluate discrete samples
+end    
 
 % Discrete time step
 dt_z = t_z(2)-t_z(1);
 
-% Time of Release
-r_dot_2_theta_z = atan2(sysvar.y_dot_2.z,sysvar.x_dot_2.z); % Projectile polar coordinate argument
-desired_release_angle = deg2rad(135);
-[r,c,i] = zerocrossrate(r_dot_2_theta_z - desired_release_angle,"InitialState",-1);
-i_release = find(i,1);
-if(isempty(i_release))
-    warning("No valid release timing found.");
-    i_release = length(t_z);
-end
-t_z_release = t_z(i_release);
-% Use t_z_release instead of t_release to indicate that this value came
-% from discrete samples with no interpolation.
-syms phi_rel t_rel
-sysparam.discrete.phi_release = struct('sym', phi_rel, 'expr', deg2rad(135), 'subsexpr', deg2rad(135));
-sysparam.discrete.t_release   = struct('sym', t_rel, 'expr', atan2(y_dot_2,x_dot_2)-phi_rel, 'subsexpr', t_z_release);
-
-% We will ultimately be using this in a cost function somehow
-%T_2_release = sysvar.T_2.z(i_release);
-syms T_2_rel
-sysparam.discrete.T_2_release   = struct('sym', T_2_rel, 'expr', str2sym('T_2(t_rel)'), 'subsexpr', sysvar.T_2.z(i_release));
-
+i_release = length(t_z);
 
 fprintf("Quick Stats:\n");
 fprintf("  %.2f = t_release : time of release\n",sysparam.discrete.t_release.subsexpr);
 fprintf("  %.2f = T_2_release : Proj. Kinetic Energy at release\n",sysparam.discrete.T_2_release.subsexpr);
 
-
-
-
-
+function FuncArgs = devalToArgs(sol,t)
+    [Y,Yp] = deval(sol,t);    
+    FuncArgs = [t; Yp(4,:); Yp(2,:);  Y(4,:); Y(2,:); Y(3,:); Y(1,:)]';
+end

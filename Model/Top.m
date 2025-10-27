@@ -4,6 +4,7 @@ clc;
 
 % Math
 SymbolicParameters;
+DefineSystemParameters;
 DeriveEquationsOfMotion;
 SolveDifferentialEquationsOfMotion;
 

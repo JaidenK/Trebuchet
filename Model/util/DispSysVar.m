@@ -11,7 +11,7 @@ function DispSysVar(var,displayCase,nDigits)
         case 1 
             if(isfield(var,'subsexpr'))
                 if(isa(var.subsexpr,'sym') || isa(var.subsexpr,'symfunc'))
-                    disp(var.sym == var.expr == vpa(simplify(expand(var.subsexpr))));
+                    disp(var.sym == var.expr == simplify(expand(var.subsexpr)));
                 else
                     disp(var.sym == var.expr == vpa(var.subsexpr));
                 end
@@ -19,7 +19,7 @@ function DispSysVar(var,displayCase,nDigits)
                 disp(var.sym == var.expr == vpa(var.expr));
             end
 
-        % Symbol, Expression
+        % 2: Symbol, Expression
         case 2 
             disp(var.sym == var.expr);
         
@@ -30,6 +30,10 @@ function DispSysVar(var,displayCase,nDigits)
         % Symbol, Numeric (degrees) (Constant System Parameters)
         case 4 
             disp([var.sym == vpa(rad2deg(var.expr)), 'degrees']);
+
+        % For when a symbol is a solution to an equation (release time)
+        case 5
+            disp([var.sym == vpa(var.subsexpr), 'where', var.expr]);
 
         otherwise
             warning("DispSysVar: bad displayCase");

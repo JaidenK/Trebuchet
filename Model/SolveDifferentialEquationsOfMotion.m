@@ -19,41 +19,15 @@ disp([[sym("theta_2");sym("Dtheta_2");sym("theta_1");sym("Dtheta_1");] EoM_Subs]
 
 % Tip: symvar(EoM_VecField)
 
-clear sysparam sysparam_symbols sysparam_values;
-sysparam = struct;
-sysparam.timeLimits = [0 2];
-sysparam.init_cond = struct;
-sysparam.init_cond.theta_1_0     = struct('sym', sym('theta_1_0'),    'expr', deg2rad(-(90+30)));
-sysparam.init_cond.theta_dot_1_0 = struct('sym', sym('theta_dot_1_0'),'expr', 0);
-sysparam.init_cond.theta_2_0     = struct('sym', sym('theta_2_0'),    'expr', deg2rad(-(90+40)));
-sysparam.init_cond.theta_dot_2_0 = struct('sym', sym('theta_dot_2_0'),'expr', 0);
-sysparam.constants = struct;
-sysparam.constants.I_1   = struct('sym', I_1,   'expr', 0.39);
-sysparam.constants.g     = struct('sym', g,     'expr', 9.81);
-sysparam.constants.l_1   = struct('sym', l_1,   'expr', 1);
-sysparam.constants.l_1cg = struct('sym', l_1cg, 'expr', .37);
-sysparam.constants.l_2   = struct('sym', l_2,   'expr', .8);
-sysparam.constants.m_1   = struct('sym', m_1,   'expr', 5);
-sysparam.constants.m_2   = struct('sym', m_2,   'expr', 0.51);
-%sysparam.constants.theta_1_initial   = struct('sym', theta_1_initial, 'expr', sysparam.old_initial_conditions(1));
-sysparam.constants.k     = struct('sym', k,     'expr', 20);
-
-% build symbols and values arrays from sysparam.constants
-fieldNames = fieldnames(sysparam.constants);
-sysparam_symbols = sym.empty;
-sysparam_values = double.empty;
-for i=1:numel(fieldNames)
-    fieldName = fieldNames{i};
-    sysvar_i = sysparam.constants.(fieldName);
-    sysparam_symbols(i) = sysvar_i.sym;
-    sysparam_values(i) = double(sysvar_i.expr);
-end
+%DefineSystemParameters;
 
 EoM_func = matlabFunction(subs(EoM_VecField,sysparam_symbols,sysparam_values),'vars', {'t','Y'});
 
+% Make sure the indicator function is set up:
+SubsSystemParameters;
 % Energy still isn't being conserved after the paramer order was fixed with
 % EoM_Subs discovery. Trying to decrease the time step period.
-options=odeset('AbsTol',1e-9,'RelTol',1e-9,'MaxStep',0.005);
+options=odeset('AbsTol',1e-9,'RelTol',1e-9,'MaxStep',0.005,'Events',releaseIndicatorFcn(sysvar,sysparam));
 % Best energy stability seen: .010 J with ('AbsTol',1e-8,'RelTol',1e-8,'MaxStep',0.010)
 
 % Initial conditions array. Note the variable order must match EoM_Subs
@@ -61,6 +35,22 @@ options=odeset('AbsTol',1e-9,'RelTol',1e-9,'MaxStep',0.005);
 ode45initcond = double([sysparam.init_cond.theta_2_0.expr sysparam.init_cond.theta_dot_2_0.expr sysparam.init_cond.theta_1_0.expr sysparam.init_cond.theta_dot_1_0.expr]);
 
 % The Grand Finale:
-sol = ode45(EoM_func,sysparam.timeLimits,ode45initcond);
+sol = ode45(EoM_func,sysparam.timeLimits,ode45initcond,options);
 
 save(fullfile("solutions",string(datetime,"yyyyMMdd-HHmm")+"-DiffEqnSolution"),"sol","sysparam","sysparam_symbols","sysparam_values")
+
+
+% Release time indicator 
+function [f] = releaseIndicatorFcn(sysvar,sysparam)  
+    
+    f = @(t,y)localIndicator(t,y);
+    
+    function [launchIndicator,isterminal,direction] = localIndicator(t,y)
+        % See devalToArgs in LoadSolution.m
+        zeropadding = zeros(size(y(1,:)));
+        FuncArgs = [t; zeropadding; zeropadding;  y(4); y(2); y(3); y(1)]';
+        launchIndicator = sysvar.phi_2.func(FuncArgs)-double(sysparam.constants.phi_rel.expr);    
+        isterminal = 1;  % Halt integration 
+        direction = 0;   % The zero can be approached from either direction
+    end
+end

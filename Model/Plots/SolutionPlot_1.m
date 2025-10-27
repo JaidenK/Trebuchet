@@ -5,33 +5,33 @@ clc;
 LoadSolution;
 
 %% Plot General Solution
-hGenSolution = figure(1);
-clf;
-
-subplot(3,1,1);
-plot(t_z,rad2deg(theta_1_z));
-hold on;
-plot(t_z,rad2deg(theta_2_z));
-grid on;
-yline(-90);
-ylabel("$\theta_i$ (degrees)",Interpreter="latex");
-
-subplot(3,1,2);
-plot(t_z,rad2deg(ddt_theta_1_z));
-hold on
-plot(t_z,rad2deg(ddt_theta_2_z));
-grid on;
-ylabel("$\dot\theta_i$ (degrees/s)",Interpreter="latex");
-
-subplot(3,1,3);
-plot(t_z,rad2deg(d2dt2_theta_1_z));
-hold on
-plot(t_z,rad2deg(d2dt2_theta_2_z));
-grid on;
-ylabel("$\ddot\theta_i$ (degrees/s$^2$)",Interpreter="latex");
-xlabel("t (s)");
-sgtitle("Solution for Generalized Coordinates");
-legend({'Arm','Rope'});
+% hGenSolution = figure(1);
+% clf;
+% 
+% subplot(3,1,1);
+% plot(t_z,rad2deg(theta_1_z));
+% hold on;
+% plot(t_z,rad2deg(theta_2_z));
+% grid on;
+% yline(-90);
+% ylabel("$\theta_i$ (degrees)",Interpreter="latex");
+% 
+% subplot(3,1,2);
+% plot(t_z,rad2deg(ddt_theta_1_z));
+% hold on
+% plot(t_z,rad2deg(ddt_theta_2_z));
+% grid on;
+% ylabel("$\dot\theta_i$ (degrees/s)",Interpreter="latex");
+% 
+% subplot(3,1,3);
+% plot(t_z,rad2deg(d2dt2_theta_1_z));
+% hold on
+% plot(t_z,rad2deg(d2dt2_theta_2_z));
+% grid on;
+% ylabel("$\ddot\theta_i$ (degrees/s$^2$)",Interpreter="latex");
+% xlabel("t (s)");
+% sgtitle("Solution for Generalized Coordinates");
+% legend({'Arm','Rope'});
 
 %% Plot Energy
 hEnergy = figure(2);
@@ -45,14 +45,11 @@ sub_PlotSpatialTrajectory;
 
 
 %% Rope Tension
-% hRope = figure(4);
-% clf;
-% hp1 = plot(t_z,vecnorm(F_rope_z,2,2));
-% xline(t_z_release);
-% grid on
-% xlabel("t (s)"); ylabel("$\|F_{rope}\|$ (N)",Interpreter="latex");
-% title("Rope Tension");
+hRope = figure(4);
+clf;
+sub_PlotForces;
 
+%%
 
 %hLagrangian = figure(3);
 %plot(t_z,Func_V(Func_args));
